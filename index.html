@@ -202,6 +202,29 @@
             return { texture: img };
         });
 
+        // Split into 4 blocks: 13, 13, 13, 14
+        const block_sizes = [13, 13, 13, 14];
+        let blocks = [];
+        let index = 0;
+
+        for (let size of block_sizes) {
+            blocks.push(timeline_variables.slice(index, index + size));
+            index += size;
+        }
+
+        function breakScreen(blockNum) {
+            return {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: `
+            <div style="text-align:center;">
+                <p>You have completed block ${blockNum} of 4.</p>
+                <p>Press Continue when you are ready for the next block.</p>
+            </div>
+        `,
+                choices: ['Continue']
+            };
+        }
+
 
         //var participant_id = jsPsych.data.getURLVariable('participant_id') || Math.floor(Math.random() * 10000);
         //const filename = `participant_${participant_id}.csv`;
@@ -267,7 +290,7 @@
             ],
             button_label: "Start Experiment",
         };
-        //timeline.push(consentSign);
+        timeline.push(consentSign);
 
         // Demographic questions
         var age_lang_demo = {
@@ -282,7 +305,7 @@
             button_label: "Done",
             randomize_question_order: false
         }
-        //timeline.push(age_lang_demo);
+        timeline.push(age_lang_demo);
 
         // Consent and demo Completion
         var demo_completion = {
@@ -300,12 +323,31 @@
         var instructions = {
             type: jsPsychHtmlButtonResponse,
             stimulus: `
-                <div style=text-align:left;>
-                <p style='text-align:center; font-weight:bold;'>[TARGET CONCEPT]</p>  
-                <p>If you think the LEFT bar represents the target concept, press the LEFT ARROW KEY.</p> 
-                <p>If you think the RIGHT bar represents the target concept, press the RIGHT ARROW KEY.</p> 
-                <p>After you respond there will be a pause and then the next trial will begin.</p> 
-                <p>The experiment will take about 30 minutes, and there will be 6 blocks of trials. You will be notified when you have completed each block. Press 'Continue' when you are ready to begin.<br></p> 
+                <div style="text-align:left;">
+                    <p style="margin-bottom:5px;">In this experiment you will view a series of images like the one below. <br>
+                        For each image please think about what it reminds you of and list your responses in the text boxes provided below the image.</p> 
+                    <div style="text-align:center;">
+                        <p style="font-size:24px; font-weight:bold; text-align:center; margin: 0 0 5px 0 ;">What does this image remind you of?</p>
+                        <img src="NBT_53/D11.png" style="width:200px; display:block; margin: 0 auto 10px auto;"> 
+
+                        <label style="display:block; margin:5px 0 2px 0;">1. Required response:</label>
+                        <input name="resp1" type="text" style="width:35%; display:block; margin:0 auto 5px auto; padding:4px;">
+
+                        <label style="display:block; margin:5px 0 2px 0;">2. Optional:</label>
+                        <input name="resp2" type="text" style="width:35%; display:block; margin:0 auto 5px auto; padding:4px;">
+
+                        <label style="display:block; margin:5px 0 2px 0;">3. Optional:</label>
+                        <input name="resp3" type="text" style="width:35%; display:block; margin:0 auto 5px auto; padding:4px;">
+
+                        <label style="display:block; margin:5px 0 2px 0;">4. Optional:</label>
+                        <input name="resp4" type="text" style="width:35%; display:block; margin:0 auto 5px auto; padding:4px;">
+
+                        <label style="display:block; margin:5px 0 2px 0;">5. Optional:</label>
+                        <input name="resp5" type="text" style="width:35%; display:block; margin:0 auto 5px auto; padding:4px;">
+                    </div>
+                    <p style="margin-bottom:5px;">You must provide at least one response per image. Please enter what the image most strongly reminds you of in the first text box provided. <br>
+                        If the image reminds you of mutiple things, please provide additional responses in the optional text boxes below. <br>
+                        The experiment will take about 30 minutes, and there will be 4 blocks of trials. You will be notified when you have completed each block. Press 'Continue' when you are ready to begin.</p>
                 </div>
                 `,
             choices: ['Continue']
@@ -318,11 +360,12 @@
             type: jsPsychSurveyHtmlForm,
             preamble: function () {
                 return `<div style="text-align:center; padding-bottom:20px;">
+                    <p style='font-size:32px; font-weight:bold;'>What does this image remind you of?</p>
                     <img src="${jsPsych.timelineVariable('texture')}" style="width:300px;">
                 </div>`;
             },
             html: `
-                <label>1. Required response:</label><br>
+                <label>1. Response:</label><br>
                 <input name="resp1" type="text" style="width:80%; margin-bottom:5px;"><br>
                 <label>2. Optional:</label><br>
                 <input name="resp2" type="text" style="width:80%; margin-bottom:5px;"><br>
@@ -348,13 +391,29 @@
         };
 
 
-        var trial_loop = {
+        /*var trial_loop = {
             timeline: [list_trial],
             timeline_variables: timeline_variables,
             randomize_order: false  // images are already shuffled
         };
 
-        timeline.push(trial_loop);
+        timeline.push(trial_loop);*/
+
+        // Add blocks with breaks
+        for (let b = 0; b < blocks.length; b++) {
+
+            // Add the trial loop for this block
+            timeline.push({
+                timeline: [list_trial],
+                timeline_variables: blocks[b],
+                randomize_order: false
+            });
+
+            // Add a break AFTER blocks 1–3 (not after the final block)
+            if (b < blocks.length - 1) {
+                timeline.push(breakScreen(b + 1));
+            }
+        }
 
 
 
@@ -385,8 +444,8 @@
         var debrief_script = {
             type: jsPsychHtmlKeyboardResponse,
             stimulus: '<div style="width:800px">Great job! You have finished the experiment.' +
-                '<p>The goal of this experiment is to investigate what factors influence the way people interpret the meanings of textures. In a series of trials, you indicated which textured bars best correspond to concepts from a given list.</p>' +
-                '<p>We are interested in understanding how the textures used in the bars affect which concepts people assign to each bar.</p>' +
+                '<p>The goal of this experiment is to investigate what factors influence the way people interpret the meanings of images. In a series of trials, you indicated what each image reminded you of.</p>' +
+                '<p>We are interested in understanding how the concepts that come to mind when viewing an image may influence how it is interpreted in different contexts.</p>' +
                 '<p>Thank you for participating! Your credit will be updated on Sona within a few days.</p>' +
                 '<p>You may press the "esc" key to end the experiment and exit full screen.</p>' +
                 '</div>',
